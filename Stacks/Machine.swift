@@ -29,13 +29,17 @@ enum Cell: Printable {
             return "Constant(\(value))"
         case let .Variable(address):
             return "Variable(\(address))"
+        case let .Branch(address):
+            return "Branch(\(address))"
+        case let .ZeroBranch(address):
+            return "ZeroBranch(\(address))"
         default:
             return "?"
         }
     }
 }
 
-class Machine {
+class Machine: Printable {
     var dataStack: Cell[] = []
     var returnStack: Cell[] = []
     var heap: Cell[] = []
@@ -45,6 +49,15 @@ class Machine {
     var errorFlag = false
     var primitiveTable: (()->Void)[] = []
     var primitiveDictionary = Dictionary<String, Int>()
+
+    var description: String {
+        var s = ""
+        var i = 0
+        for c in self.heap {
+            s += "\t\(i++):\t\(c)\n"
+        }
+        return "data: \(self.dataStack)\nreturn: \(self.returnStack)\nheap:\n\(s)"
+    }
 
     init() {
         self.registerPrimitives()
@@ -457,5 +470,7 @@ class ThreadedInterpreter {
         // here goes nothing, should print "hello world!"
         //
         engine.executeWord("first")
+
+        println("\(engine)")
     }
 }
