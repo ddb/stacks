@@ -8,5 +8,6 @@
 
 import Foundation
 
-println("Hello, World!")
+let uut = ThreadedInterpreter()
+uut.test()
 
