@@ -8,7 +8,7 @@
 
 import Foundation
 
-enum Cell {
+enum Cell: Printable {
     case Thread(index: Int)
     case Primitive(num: Int)
     case Literal(value: Int)
@@ -17,7 +17,7 @@ enum Cell {
     case Variable(address: Int)
     case Constant(value: Int)
 
-    func description() -> String {
+    var description: String {
         switch self {
         case let .Thread(index):
             return "Thread(\(index))"
@@ -91,7 +91,7 @@ class Machine {
             self.push(Cell.Literal(value: address))
 
         default:
-            println("problem: \(currentItem.description())")
+            println("problem: \(currentItem)")
         }
     }
 
@@ -193,7 +193,7 @@ class Machine {
 
     func dotsPrim() {
         for i in self.dataStack {
-            print("\(i.description()) ")
+            print("\(i) ")
         }
         self.next()
     }
@@ -312,7 +312,7 @@ class Machine {
     }
 
     func printTopOfStackPrim() {
-        print("\(self.pop().description()) ")
+        print("\(self.pop()) ")
         self.next()
     }
 
