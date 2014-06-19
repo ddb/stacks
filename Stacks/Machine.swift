@@ -50,32 +50,32 @@ class Machine {
         self.registerPrimitives()
     }
 
-    func registerPrimitive(name:String, _ primitiveClosure: ()->Void) -> Int {
-        let index = primitiveTable.endIndex
+    func registerPrimitive(name:String, execute primitiveClosure: ()->Void) -> Int {
+        let index = self.primitiveTable.endIndex
         self.primitiveDictionary[name] = index
-        primitiveTable += primitiveClosure
+        self.primitiveTable += primitiveClosure
         return index
     }
 
     func next() {   // inner interpreter
-        var currentItem = heap[instructionPointer++]
+        var currentItem = self.heap[self.instructionPointer++]
 
         switch currentItem {
         case let .Thread(index):
-            returnStack += Cell.Thread(index: instructionPointer)
-            instructionPointer = index
+            self.returnStack += Cell.Thread(index: instructionPointer)
+            self.instructionPointer = index
 
         case let .Primitive(num):
             self.primitiveTable[num]()
 
         case let .Branch(destinationIndex):
-            instructionPointer = destinationIndex
+            self.instructionPointer = destinationIndex
 
         case let .ZeroBranch(destinationIndex):
             switch self.pop() {
             case let .Literal(value):
                 if (value == 0) {
-                    instructionPointer = destinationIndex
+                    self.instructionPointer = destinationIndex
                 }
             default:
                 self.error()
@@ -181,71 +181,71 @@ class Machine {
         self.push(self.returnStack[self.returnStack.endIndex - 1])
     }
 
-    func exitPrim() {
+    func exitPrimitive() {
         switch self.rpop() {
         case let .Thread(index):
-            instructionPointer = index
+            self.instructionPointer = index
         default:
             self.error()
         }
-        next()
+        self.next()
     }
 
-    func dotsPrim() {
+    func dotsPrimitive() {
         for i in self.dataStack {
             print("\(i) ")
         }
         self.next()
     }
 
-    func dupPrim() {
+    func dupPrimitive() {
         self.dup()
         self.next()
     }
 
-    func dropPrim() {
+    func dropPrimitive() {
         self.pop()
         self.next()
     }
 
-    func swapPrim() {
+    func swapPrimitive() {
         self.swap()
         self.next()
     }
 
-    func overPrim() {
+    func overPrimitive() {
         self.over()
         self.next()
     }
 
-    func rotPrim() {
+    func rotPrimitive() {
         self.rot()
         self.next()
     }
 
-    func negrotPrim() {
+    func negrotPrimitive() {
         self.negrot()
         self.next()
     }
 
-    func nipPrim() {
+    func nipPrimitive() {
         self.nip()
         self.next()
     }
 
-    func tuckPrim() {
+    func tuckPrimitive() {
         self.tuck()
         self.next()
     }
 
-    func intMathPrimAux(action:(Int, Int)->Int) {
-        let b = self.pop()
-        let a = self.pop()
-        switch a {
-        case let .Literal(aValue):
-            switch b {
-            case let .Literal(bValue):
-                self.push(Cell.Literal(value:action(aValue, bValue)))
+    func integerMathOperation(action:(lhs:Int, rhs:Int)->Int) {
+        let bCell = self.pop()
+        let aCell = self.pop()
+        switch aCell {
+        case let .Literal(a):
+            switch bCell {
+            case let .Literal(b):
+                self.push(Cell.Literal(value:action(lhs:a, rhs:b)))
             default:
                 self.error()
             }
@@ -254,50 +254,50 @@ class Machine {
         }
     }
 
-    func addPrim() {
-        intMathPrimAux { $0 + $1 }
+    func addPrimitive() {
+        self.integerMathOperation { $0 + $1 }
         self.next()
     }
 
-    func subPrim() {
-        intMathPrimAux { $0 - $1 }
+    func subPrimitive() {
+        self.integerMathOperation { $0 - $1 }
         self.next()
     }
 
-    func multPrim() {
-        intMathPrimAux { $0 * $1 }
+    func multPrimitive() {
+        self.integerMathOperation { $0 * $1 }
         self.next()
     }
 
-    func divPrim() {
-        intMathPrimAux { $0 / $1 }
+    func divPrimitive() {
+        self.integerMathOperation { $0 / $1 }
         self.next()
     }
 
-    func multDivPrim() {
+    func multDivPrimitive() {
         let c = self.pop()
-        intMathPrimAux { $0 * $1 }
+        self.integerMathOperation { $0 * $1 }
         self.push(c)
-        intMathPrimAux { $0 / $1 }
+        self.integerMathOperation { $0 / $1 }
         self.next()
     }
 
-    func andPrim() {
-        intMathPrimAux { $0 & $1 }
+    func andPrimitive() {
+        self.integerMathOperation { $0 & $1 }
         self.next()
     }
 
-    func orPrim() {
-        intMathPrimAux { $0 | $1 }
+    func orPrimitive() {
+        self.integerMathOperation { $0 | $1 }
         self.next()
     }
 
-    func xorPrim() {
-        intMathPrimAux { $0 ^ $1 }
+    func xorPrimitive() {
+        self.integerMathOperation { $0 ^ $1 }
         self.next()
     }
 
-    func greaterThanZeroPrim() {
+    func greaterThanZeroPrimitive() {
         switch self.pop() {
         case let .Literal(value):
             if value > 0 {
@@ -311,12 +311,12 @@ class Machine {
         self.next()
     }
 
-    func printTopOfStackPrim() {
+    func printTopOfStackPrimitive() {
         print("\(self.pop()) ")
         self.next()
     }
 
-    func fetchPrim() {
+    func fetchPrimitive() {
         let indexLiteral = self.pop()
         switch indexLiteral {
         case let .Literal(index):
@@ -326,7 +326,7 @@ class Machine {
         }
     }
 
-    func storePrim() {
+    func storePrimitive() {
         let indexLiteral = self.pop()
         switch indexLiteral {
         case let .Literal(index):
@@ -338,22 +338,22 @@ class Machine {
         self.next()
     }
 
-    func toRPrim() {
+    func toRPrimitive() {
         self.toR()
         self.next()
     }
 
-    func fromRPrim() {
+    func fromRPrimitive() {
         self.fromR()
         self.next()
     }
 
-    func fetchRPrim() {
+    func fetchRPrimitive() {
         self.fetchR()
         self.next()
     }
 
-    func wordsPrim() {
+    func wordsPrimitive() {
         for (k, v) in self.primitiveDictionary {
             print("\(k) ")
         }
@@ -364,42 +364,42 @@ class Machine {
     }
 
     func registerPrimitives() {
-        self.registerPrimitive(";",     { self.exitPrim() })
-        self.registerPrimitive("bye",   { self.exitFlag = true })
-        self.registerPrimitive("hello", { println("hello world!") })
-        self.registerPrimitive("dup",   { self.dupPrim() })
-        self.registerPrimitive("drop",  { self.dropPrim() })
-        self.registerPrimitive("swap",  { self.swapPrim() })
-        self.registerPrimitive("nip",   { self.nipPrim() })
-        self.registerPrimitive("tuck",  { self.tuckPrim() })
-        self.registerPrimitive("over",  { self.overPrim() })
-        self.registerPrimitive(">r",    { self.toRPrim() })
-        self.registerPrimitive("r>",    { self.fromRPrim() })
-        self.registerPrimitive("r@",    { self.fetchRPrim() })
-        self.registerPrimitive("+",     { self.addPrim() })
-        self.registerPrimitive("-",     { self.subPrim() })
-        self.registerPrimitive("*",     { self.multPrim() })
-        self.registerPrimitive("/",     { self.divPrim() })
-        self.registerPrimitive("*/",    { self.multDivPrim() })
-        self.registerPrimitive(".",     { self.printTopOfStackPrim() })
-        self.registerPrimitive("@",     { self.fetchPrim() })
-        self.registerPrimitive("!",     { self.storePrim() })
-        self.registerPrimitive("words", { self.wordsPrim() })
-        self.registerPrimitive("0<",    { self.greaterThanZeroPrim() })
-        self.registerPrimitive("and",   { self.andPrim() })
-        self.registerPrimitive("or",    { self.orPrim() })
-        self.registerPrimitive("xor",   { self.xorPrim() })
+        self.registerPrimitive(";",     execute:{ self.exitPrimitive() })
+        self.registerPrimitive("bye",   execute:{ self.exitFlag = true })
+        self.registerPrimitive("hello", execute:{ println("hello world!") })
+        self.registerPrimitive("dup",   execute:{ self.dupPrimitive() })
+        self.registerPrimitive("drop",  execute:{ self.dropPrimitive() })
+        self.registerPrimitive("swap",  execute:{ self.swapPrimitive() })
+        self.registerPrimitive("nip",   execute:{ self.nipPrimitive() })
+        self.registerPrimitive("tuck",  execute:{ self.tuckPrimitive() })
+        self.registerPrimitive("over",  execute:{ self.overPrimitive() })
+        self.registerPrimitive(">r",    execute:{ self.toRPrimitive() })
+        self.registerPrimitive("r>",    execute:{ self.fromRPrimitive() })
+        self.registerPrimitive("r@",    execute:{ self.fetchRPrimitive() })
+        self.registerPrimitive("+",     execute:{ self.addPrimitive() })
+        self.registerPrimitive("-",     execute:{ self.subPrimitive() })
+        self.registerPrimitive("*",     execute:{ self.multPrimitive() })
+        self.registerPrimitive("/",     execute:{ self.divPrimitive() })
+        self.registerPrimitive("*/",    execute:{ self.multDivPrimitive() })
+        self.registerPrimitive(".",     execute:{ self.printTopOfStackPrimitive() })
+        self.registerPrimitive("@",     execute:{ self.fetchPrimitive() })
+        self.registerPrimitive("!",     execute:{ self.storePrimitive() })
+        self.registerPrimitive("words", execute:{ self.wordsPrimitive() })
+        self.registerPrimitive("0<",    execute:{ self.greaterThanZeroPrimitive() })
+        self.registerPrimitive("and",   execute:{ self.andPrimitive() })
+        self.registerPrimitive("or",    execute:{ self.orPrimitive() })
+        self.registerPrimitive("xor",   execute:{ self.xorPrimitive() })
     }
 
     func mainLoop() {
-        while !exitFlag {
-            next()
+        while !self.exitFlag {
+            self.next()
         }
     }
 
     func cellForName(name:String) -> Cell! {
-        if let primIndex = self.primitiveDictionary[name] {
-            return Cell.Primitive(num: primIndex)
+        if let PrimitiveIndex = self.primitiveDictionary[name] {
+            return Cell.Primitive(num: PrimitiveIndex)
         } else if let index = self.wordDictionary[name] {
             return Cell.Thread(index: index)
         } else if let value = name.toInt() {
@@ -420,21 +420,21 @@ class Machine {
     }
 
     func registerWord(name: String, words threadedCode:String[]) {
-        createName(name)
-        heap += Cell.Branch(destinationIndex: heap.endIndex + 1)
+        self.createName(name)
+        self.heap += Cell.Branch(destinationIndex: self.heap.endIndex + 1)
         for name in threadedCode {
-            heap += cellForName(name)
+            self.heap += self.cellForName(name)
         }
     }
 
     func registerConstant(name: String, value: Int) {
-        createName(name)
-        heap += Cell.Constant(value: value)
+        self.createName(name)
+        self.heap += Cell.Constant(value: value)
     }
 
     func registerVariable(name: String, initialValue: Int) {
-        let address = createName(name)
-        heap += Cell.Variable(address: address)
+        let address = self.createName(name)
+        self.heap += Cell.Variable(address: address)
     }
 
     func executeWord(word: String) -> Bool {
