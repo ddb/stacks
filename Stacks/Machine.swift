@@ -39,7 +39,7 @@ enum Cell: Printable {
     }
 }
 
-class Machine: Printable {
+class Machine {
     var dataStack: Cell[] = []
     var returnStack: Cell[] = []
     var heap: Cell[] = []
@@ -49,15 +49,6 @@ class Machine: Printable {
     var errorFlag = false
     var primitiveTable: (()->Void)[] = []
     var primitiveDictionary = Dictionary<String, Int>()
-
-    var description: String {
-        var s = ""
-        var i = 0
-        for c in self.heap {
-            s += "\t\(i++):\t\(c)\n"
-        }
-        return "data: \(self.dataStack)\nreturn: \(self.returnStack)\nheap:\n\(s)"
-    }
 
     init() {
         self.registerPrimitives()
@@ -116,6 +107,60 @@ class Machine: Printable {
         self.errorFlag = true
     }
 
+    func mainLoop() {
+        while !self.exitFlag {
+            self.next()
+        }
+    }
+
+    func cellForName(name:String) -> Cell! {
+        if let PrimitiveIndex = self.primitiveDictionary[name] {
+            return Cell.Primitive(num: PrimitiveIndex)
+        } else if let index = self.wordDictionary[name] {
+            return Cell.Thread(index: index)
+        } else if let value = name.toInt() {
+            return Cell.Literal(value: value)
+        } else {
+            return nil
+        }
+    }
+
+    func heapIndexForName(name: String) -> Int! {
+        return self.wordDictionary[name]
+    }
+
+    func createName(name: String) -> Int {
+        let nameAddress = self.heap.endIndex
+        self.wordDictionary[name] = nameAddress
+        return nameAddress
+    }
+
+    func registerWord(name: String, words threadedCode:String[]) {
+        self.createName(name)
+        self.heap += Cell.Branch(destinationIndex: self.heap.endIndex + 1)
+        for name in threadedCode {
+            self.heap += self.cellForName(name)
+        }
+    }
+
+    func registerConstant(name: String, value: Int) {
+        self.createName(name)
+        self.heap += Cell.Constant(value: value)
+    }
+
+    func registerVariable(name: String, initialValue: Int) {
+        let address = self.createName(name)
+        self.heap += Cell.Variable(address: address)
+    }
+
+    func executeWord(word: String) -> Bool {
+        self.instructionPointer = self.heapIndexForName(word)
+        self.mainLoop()
+        return !self.errorFlag
+    }
+}
+
+extension Machine { // operations
     func topOfStack() -> Cell! {
         return self.dataStack[self.dataStack.endIndex - 1]
     }
@@ -193,7 +238,9 @@ class Machine: Printable {
     func fetchR() {
         self.push(self.returnStack[self.returnStack.endIndex - 1])
     }
+}
 
+extension Machine { // Primitives
     func exitPrimitive() {
         switch self.rpop() {
         case let .Thread(index):
@@ -403,57 +450,16 @@ class Machine: Printable {
         self.registerPrimitive("or",    execute:{ self.orPrimitive() })
         self.registerPrimitive("xor",   execute:{ self.xorPrimitive() })
     }
+}
 
-    func mainLoop() {
-        while !self.exitFlag {
-            self.next()
+extension Machine: Printable {
+    var description: String {
+    var s = ""
+        var i = 0
+        for c in self.heap {
+            s += "\t\(i++):\t\(c)\n"
         }
-    }
-
-    func cellForName(name:String) -> Cell! {
-        if let PrimitiveIndex = self.primitiveDictionary[name] {
-            return Cell.Primitive(num: PrimitiveIndex)
-        } else if let index = self.wordDictionary[name] {
-            return Cell.Thread(index: index)
-        } else if let value = name.toInt() {
-            return Cell.Literal(value: value)
-        } else {
-            return nil
-        }
-    }
-
-    func heapIndexForName(name: String) -> Int! {
-        return self.wordDictionary[name]
-    }
-
-    func createName(name: String) -> Int {
-        let nameAddress = self.heap.endIndex
-        self.wordDictionary[name] = nameAddress
-        return nameAddress
-    }
-
-    func registerWord(name: String, words threadedCode:String[]) {
-        self.createName(name)
-        self.heap += Cell.Branch(destinationIndex: self.heap.endIndex + 1)
-        for name in threadedCode {
-            self.heap += self.cellForName(name)
-        }
-    }
-
-    func registerConstant(name: String, value: Int) {
-        self.createName(name)
-        self.heap += Cell.Constant(value: value)
-    }
-
-    func registerVariable(name: String, initialValue: Int) {
-        let address = self.createName(name)
-        self.heap += Cell.Variable(address: address)
-    }
-
-    func executeWord(word: String) -> Bool {
-        self.instructionPointer = self.heapIndexForName(word)
-        self.mainLoop()
-        return !self.errorFlag
+        return "data: \(self.dataStack)\nreturn: \(self.returnStack)\nheap:\n\(s)"
     }
 }
 
